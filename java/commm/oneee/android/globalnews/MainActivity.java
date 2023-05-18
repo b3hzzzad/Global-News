@@ -1,142 +1,138 @@
 package commm.oneee.android.globalnews;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.content.Context;
-import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.ProgressBar;
+import android.util.Log;
 import android.widget.Toast;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.http.GET;
+import retrofit2.http.Query;
+
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 
 public class MainActivity extends AppCompatActivity {
-
-    String news_url = "https://newsapi.org/v2/top-headlines?country=us&apiKey=648805f67bdb4aa6a454d4f6480ae35d";
-    OkHttpClient okHttpClient;
-    String jsonDataString, title, description, image_url, date, get_url;
-    Response response;
-    JSONObject jsonObject;
-    RecyclerView recyclerView;
-    mAdapter mAdapter;
-    ArrayList<mDATA> arrayList;
-    getDATA getDATA;
-    SwipeRefreshLayout swipeRefreshLayout;
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-
-        int id = item.getItemId();
-        switch (id) {
-            case R.id.about:
-                Intent intent = new Intent(MainActivity.this, About.class);
-                startActivity(intent);
-                return true;
-
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(@NonNull Menu menu) {
-        getMenuInflater().inflate(R.menu.navigation_menu, menu);
-        return true;
-    }
+    private RecyclerView recyclerView;
+    private NewsAdapter newsAdapter;
+    private static final String BASE_URL = "https://newsapi.org/v2/";
+    private static final String API_KEY = "648805f67bdb4aa6a454d4f6480ae35d";
+    List<NewsArticle> newsArticles = new ArrayList<>();
+    private NewsApiService newsApiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        getDATA = new getDATA();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
 
-        okHttpClient = new OkHttpClient();
+        newsApiService = retrofit.create(NewsApiService.class);
+
         recyclerView = findViewById(R.id.recyclerView);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(linearLayoutManager);
-        arrayList = new ArrayList<>();
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        swipeRefreshLayout = findViewById(R.id.swipeRefresh);
-        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                if (isNetworkAvailable()) {
-                    finish();
-                    startActivity(getIntent());
-                } else {
-                    Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
+        newsAdapter = new NewsAdapter(newsArticles);
+        recyclerView.setAdapter(newsAdapter);
 
         if (isNetworkAvailable()) {
-            getDATA.execute();
+            getData();
         } else {
-            Toast.makeText(MainActivity.this, "Network Error", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Network Error !!!", Toast.LENGTH_SHORT).show();
         }
 
     }
 
-    class getDATA extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected void onPostExecute(Void unused) {
+    void getData() {
+        Call<NewsResponse> call = newsApiService.getTopHeadlines("us", API_KEY);
+        call.enqueue(new Callback<NewsResponse>() {
+            @Override
+            public void onResponse(Call<NewsResponse> call, Response<NewsResponse> response) {
+                if (response.isSuccessful()) {
+                    NewsResponse newsResponse = response.body();
+                    List<NewsArticle> articles = newsResponse.getArticles();
 
-            recyclerView.setAdapter(mAdapter);
-            super.onPostExecute(unused);
-        }
+                    // Clear the existing list
+                    newsArticles.clear();
 
-        @Override
-        protected Void doInBackground(Void... voids) {
+                    // Add new articles to the list
+                    newsArticles.addAll(articles);
 
-            Request request = new Request.Builder().url(news_url).build();
-            try {
-                response = okHttpClient.newCall(request).execute();
-                jsonDataString = response.body().toString();
-
-                jsonDataString = response.body().string();
-
-                jsonObject = new JSONObject(jsonDataString);
-
-                for (int i = 0; i < 20; i++) {
-
-                    JSONObject jsonObject1 = jsonObject.getJSONArray("articles").getJSONObject(i);
-                    title = jsonObject1.getString("title");
-                    description = jsonObject1.getString("description");
-                    image_url = jsonObject1.getString("urlToImage");
-                    date = jsonObject1.getString("publishedAt");
-                    get_url = jsonObject1.getString("url");
-
-                    String mDate = date.substring(0, 10);
-
-                    arrayList.add(new mDATA(title, description, image_url, mDate, get_url));
+                    // Notify the adapter of the data changes
+                    newsAdapter.notifyDataSetChanged();
+                } else {
+                    // Handle API error
+                    Log.e("API Error", response.message());
                 }
-
-            } catch (IOException | JSONException e) {
-                e.printStackTrace();
             }
 
-            mAdapter = new mAdapter(arrayList, MainActivity.this);
+            @Override
+            public void onFailure(Call<NewsResponse> call, Throwable t) {
+                // Handle request failure
+            }
+        });
+    }
 
-            return null;
+    interface NewsApiService {
+        @GET("top-headlines")
+        Call<NewsResponse> getTopHeadlines(
+                @Query("country") String country,
+                @Query("apiKey") String apiKey
+        );
+    }
+
+    class NewsResponse {
+        private List<NewsArticle> articles;
+
+        public List<NewsArticle> getArticles() {
+            return articles;
+        }
+
+        public void setArticles(List<NewsArticle> articles) {
+            this.articles = articles;
+        }
+    }
+
+    class NewsArticle {
+        private String description, url, title, urlToImage, content, publishedAt;
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public String getUrlToImage() {
+            return urlToImage;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public String getPublishedAt() {
+            return publishedAt;
         }
     }
 
