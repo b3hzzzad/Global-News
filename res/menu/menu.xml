@@ -9,7 +9,23 @@
         android:id="@+id/action_search"
         android:title="Search"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
-        app:showAsAction="ifRoom|collapseActionView" />
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/sports"
+        android:title="Sports" />
+    <item
+        android:id="@+id/health"
+        android:title="Health" />
+    <item
+        android:id="@+id/science"
+        android:title="Science" />
+    <item
+        android:id="@+id/entertainment"
+        android:title="Entertainment" />
+    <item
+        android:id="@+id/technology"
+        android:title="Technology" />
+
     <item
         android:id="@+id/aboutItem"
         android:title="About" />
