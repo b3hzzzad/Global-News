@@ -41,6 +41,17 @@ public class webview extends AppCompatActivity {
             }
         });
 
+        if (isNetworkAvailable()) {
+            webView.loadUrl(getURL);
+            webView.getSettings().setJavaScriptEnabled(true);
+            webView.setWebViewClient(new WebViewClient());
+
+            swipeRefreshLayout.setRefreshing(false);
+        } else {
+            Toast.makeText(webview.this, "Network Error !!!", Toast.LENGTH_SHORT).show();
+            swipeRefreshLayout.setRefreshing(false);
+        }
+
 
     }
 
