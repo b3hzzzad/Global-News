@@ -38,20 +38,16 @@ public class MainActivity extends AppCompatActivity {
     List<NewsArticle> newsArticles = new ArrayList<>();
     private NewsApiService newsApiService;
     private NewsApiServiceQuery newsApiServiceQuery;
-    private NewsApiServiceCategory newsApiServiceCategory;
     String searchQuery;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu, menu);
 
-        // Retrieve the SearchView and set up search functionality
         SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
-                // Perform search operation with the submitted query
                 performSearch(query);
                 return true;
             }
@@ -71,25 +67,16 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         switch (id) {
             case R.id.aboutItem:
-
                 Intent intent = new Intent(MainActivity.this, about.class);
                 startActivity(intent);
                 return true;
 
             case R.id.sports:
-                getDataCategory("sports");
-                return true;
             case R.id.health:
-                getDataCategory("health");
-                return true;
             case R.id.science:
-                getDataCategory("science");
-                return true;
             case R.id.entertainment:
-                getDataCategory("entertainment");
-                return true;
             case R.id.technology:
-                getDataCategory("technology");
+                getData(item.getTitle().toString().toLowerCase());
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -108,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
 
         newsApiService = retrofit.create(NewsApiService.class);
         newsApiServiceQuery = retrofit.create(NewsApiServiceQuery.class);
-        newsApiServiceCategory = retrofit.create(NewsApiServiceCategory.class);
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -117,33 +103,28 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(newsAdapter);
 
         SwipeRefreshLayout swipeRefreshLayout = findViewById(R.id.swipeRefreshLayoutMain);
-        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                if (isNetworkAvailable()) {
-
-                    getData();
-                    swipeRefreshLayout.setRefreshing(false);
-                } else {
-                    Toast.makeText(MainActivity.this, "Network Error !!!", Toast.LENGTH_SHORT).show();
-                    swipeRefreshLayout.setRefreshing(false);
-                }
-
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            if (isNetworkAvailable()) {
+                getData(null);
+                swipeRefreshLayout.setRefreshing(false);
+            } else {
+                Toast.makeText(MainActivity.this, "Network Error !!!", Toast.LENGTH_SHORT).show();
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
 
         if (isNetworkAvailable()) {
 
-            getData();
+            getData(null);
         } else {
             Toast.makeText(this, "Network Error !!!", Toast.LENGTH_SHORT).show();
         }
 
     }
 
-    void getData() {
+    void getData(String category) {
 
-        Call<NewsResponse> call = newsApiService.getTopHeadlines("us", API_KEY);
+        Call<NewsResponse> call = newsApiService.getTopHeadlines("us", API_KEY, category);
         call.enqueue(new Callback<NewsResponse>() {
             @Override
             public void onResponse(Call<NewsResponse> call, Response<NewsResponse> response) {
@@ -178,7 +159,8 @@ public class MainActivity extends AppCompatActivity {
         @GET("top-headlines")
         Call<NewsResponse> getTopHeadlines(
                 @Query("country") String country,
-                @Query("apiKey") String apiKey
+                @Query("apiKey") String apiKey,
+                @Query("category") String category
         );
     }
 
@@ -187,16 +169,6 @@ public class MainActivity extends AppCompatActivity {
         Call<NewsResponse> getTopHeadlines(
                 @Query("apiKey") String apiKey,
                 @Query("q") String query
-        );
-    }
-
-    interface NewsApiServiceCategory {
-        @GET("top-headlines")
-        Call<NewsResponse> getTopHeadlines(
-                @Query("apiKey") String apiKey,
-                @Query("country") String country,
-                @Query("category") String category
-
         );
     }
 
@@ -213,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     class NewsArticle {
-        private String description, url, title, urlToImage, content, publishedAt;
+        private String description, url, title, urlToImage, content, publishedAt, author;
 
         public String getTitle() {
             return title;
@@ -233,6 +205,10 @@ public class MainActivity extends AppCompatActivity {
 
         public String getContent() {
             return content;
+        }
+
+        public String getAuthor() {
+            return author;
         }
 
         public String getPublishedAt() {
@@ -280,35 +256,5 @@ public class MainActivity extends AppCompatActivity {
         // This method will be called when the user submits the search query
         // Implement your logic to perform the search operation, filter data, or update the RecyclerView accordingly
     }
-
-    void getDataCategory(String category) {
-        Call<NewsResponse> call = newsApiServiceCategory.getTopHeadlines(API_KEY, "us", category);
-        call.enqueue(new Callback<NewsResponse>() {
-            @Override
-            public void onResponse(Call<NewsResponse> call, Response<NewsResponse> response) {
-                if (response.isSuccessful()) {
-                    NewsResponse newsResponse = response.body();
-                    List<NewsArticle> articles = newsResponse.getArticles();
-
-                    // Clear the existing list
-                    newsArticles.clear();
-
-                    // Add new articles to the list
-                    newsArticles.addAll(articles);
-
-                    // Notify the adapter of the data changes
-                    newsAdapter.notifyDataSetChanged();
-                } else {
-                    // Handle API error
-                    Log.e("API Error", response.message());
-                }
-            }
-
-            @Override
-            public void onFailure(Call<NewsResponse> call, Throwable t) {
-                // Handle request failure
-            }
-        });
-    }
-
+    
 }

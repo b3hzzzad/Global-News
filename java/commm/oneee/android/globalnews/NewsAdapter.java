@@ -37,6 +37,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
         holder.titleTextView.setText(article.getTitle());
         holder.contentTextView.setText(article.getDescription());
         holder.publishedAt.setText(article.getPublishedAt().substring(0, 10));
+        holder.author.setText(article.getAuthor());
 
         Glide.with(holder.itemView.getContext())
                 .load(article.getUrlToImage())
@@ -64,7 +65,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
     }
 
     static class NewsViewHolder extends RecyclerView.ViewHolder {
-        TextView titleTextView, contentTextView, publishedAt;
+        TextView titleTextView, contentTextView, publishedAt, author;
         ImageView imageView;
 
         public NewsViewHolder(@NonNull View itemView) {
@@ -73,6 +74,7 @@ public class NewsAdapter extends RecyclerView.Adapter<NewsAdapter.NewsViewHolder
             contentTextView = itemView.findViewById(R.id.contentTextview);
             imageView = itemView.findViewById(R.id.imageView);
             publishedAt = itemView.findViewById(R.id.date);
+            author = itemView.findViewById(R.id.author);
         }
     }
 }

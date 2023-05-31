@@ -28,5 +28,5 @@
 
     <item
         android:id="@+id/aboutItem"
-        android:title="About" />
+        android:title="Contact us" />
 </menu>
